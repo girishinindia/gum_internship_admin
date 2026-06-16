@@ -19,7 +19,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: '▦', roles: ['moderator', 'finance_admin', 'support'] },
   { href: '/moderation/kyc', label: 'Instructor KYC', icon: '☑', roles: ['moderator'] },
-  { href: '/moderation/internships', label: 'Internship reviews', icon: '◫', roles: ['moderator'] },
+  { href: '/internships', label: 'Internships', icon: '◫', roles: ['moderator'] },
   { href: '/users', label: 'Users', icon: '⚇', roles: ['moderator', 'support'] },
   { href: '/enrollments', label: 'Enrollment ops', icon: '↹', roles: ['moderator', 'support'] },
   { href: '/finance/orders', label: 'Orders', icon: '₹', roles: ['finance_admin'] },
