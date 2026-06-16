@@ -19,9 +19,10 @@ export default function UsersPage(): JSX.Element {
               <p className="text-caption text-neutral-500">{r.email ?? r.phone}</p>
             </div>
           ) },
-          { key: 'roles', label: 'Roles', render: (r) => (
-            <span className="flex flex-wrap gap-1">{(r.roles as string[]).map((x) => <span key={x} className="badge bg-neutral-100 text-neutral-700">{x}</span>)}</span>
-          ) },
+          { key: 'roles', label: 'Roles', render: (r) => {
+            const roles = Array.isArray(r.roles) ? r.roles as string[] : [];
+            return <span className="flex flex-wrap gap-1">{roles.map((x) => <span key={x} className="badge bg-neutral-100 text-neutral-700">{x}</span>)}</span>;
+          } },
           { key: 'status', label: 'Status', sortable: true, render: (r) => (
             <span className={`badge ${r.status === 'active' ? 'bg-success-50 text-success-700' : r.status === 'suspended' ? 'bg-danger-50 text-danger-700' : 'bg-neutral-100 text-neutral-700'}`}>{r.status}</span>
           ) },

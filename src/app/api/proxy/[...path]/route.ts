@@ -5,11 +5,47 @@ import { AT_COOKIE, RT_COOKIE } from '@/lib/serverApi';
 
 const API = process.env.API_URL ?? 'http://localhost:4000';
 
+interface Rotated { at: string; rt: string; maxAge: number }
+
 /**
  * Same-origin API proxy for CLIENT components: attaches the httpOnly access
- * token, and on 401 transparently rotates the refresh token ONCE and retries.
+ * token, and on 401 transparently rotates the refresh token and retries.
  * Tokens never touch browser JS (XSS-safe by construction).
+ *
+ * Refresh is SERIALISED per refresh-token. After the ~15-min access cookie
+ * expires, a page often fires several authed requests at once; the server
+ * rotates refresh tokens with reuse-detection (presenting a rotated token again
+ * revokes the WHOLE session), so a naive per-request refresh races and logs the
+ * user out. Sharing one in-flight refresh — and keeping its result for a short
+ * grace window so stragglers carrying the old token reuse it — avoids that.
  */
+const refreshing = new Map<string, Promise<Rotated | null>>();
+
+function refreshOnce(rt: string): Promise<Rotated | null> {
+  const inflight = refreshing.get(rt);
+  if (inflight) return inflight;
+  const p = (async (): Promise<Rotated | null> => {
+    try {
+      const refresh = await fetch(`${API}/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ refreshToken: rt }),
+        cache: 'no-store',
+      });
+      const body = (await refresh.json()) as { success: boolean; data?: { accessToken: string; refreshToken: string; expiresIn: number } };
+      if (body.success && body.data) return { at: body.data.accessToken, rt: body.data.refreshToken, maxAge: body.data.expiresIn };
+      return null;
+    } catch {
+      return null;
+    }
+  })();
+  refreshing.set(rt, p);
+  // Keep the resolved refresh around briefly so late requests still holding the
+  // old token reuse it instead of presenting the now-rotated token again.
+  void p.finally(() => { setTimeout(() => { if (refreshing.get(rt) === p) refreshing.delete(rt); }, 10_000); });
+  return p;
+}
+
 async function forward(req: NextRequest, params: { path: string[] }): Promise<NextResponse> {
   const target = `${API}/v1/${params.path.join('/')}${req.nextUrl.search}`;
   const bodyText = req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.text();
@@ -28,18 +64,12 @@ async function forward(req: NextRequest, params: { path: string[] }): Promise<Ne
   let token = cookies().get(AT_COOKIE)?.value;
   let upstream = await call(token);
 
-  let rotated: { at: string; rt: string; maxAge: number } | null = null;
-  if (upstream.status === 401 && cookies().get(RT_COOKIE)?.value) {
-    const refresh = await fetch(`${API}/v1/auth/refresh`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ refreshToken: cookies().get(RT_COOKIE)?.value }),
-      cache: 'no-store',
-    });
-    const rBody = (await refresh.json()) as { success: boolean; data?: { accessToken: string; refreshToken: string; expiresIn: number } };
-    if (rBody.success && rBody.data) {
-      token = rBody.data.accessToken;
-      rotated = { at: rBody.data.accessToken, rt: rBody.data.refreshToken, maxAge: rBody.data.expiresIn };
+  let rotated: Rotated | null = null;
+  const rt = cookies().get(RT_COOKIE)?.value;
+  if (upstream.status === 401 && rt) {
+    rotated = await refreshOnce(rt);
+    if (rotated) {
+      token = rotated.at;
       upstream = await call(token);
     }
   }
