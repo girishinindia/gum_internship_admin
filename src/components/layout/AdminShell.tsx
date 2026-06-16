@@ -73,6 +73,7 @@ export function AdminShell({ identity, children }: { identity: AdminIdentity; ch
           <div className="flex items-center gap-3">
             <span className={`badge ${ROLE_BADGE[primaryRole ?? ''] ?? 'bg-neutral-100 text-neutral-700'}`}>{primaryRole}</span>
             <span className="text-body-sm font-medium">{identity.name}</span>
+            <Link href="/security" className="text-body-sm text-neutral-500 hover:text-neutral-900">Security</Link>
             <button
               className="text-body-sm text-neutral-500 hover:text-danger-600"
               onClick={async () => { await fetch('/api/session', { method: 'DELETE' }); router.push('/login'); router.refresh(); }}>

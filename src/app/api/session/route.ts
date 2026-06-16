@@ -4,23 +4,36 @@ import { AT_COOKIE, RT_COOKIE, apiSend } from '@/lib/serverApi';
 import type { SessionUser } from '@/lib/types';
 
 interface AuthTokens { accessToken: string; refreshToken: string; expiresIn: number; user: SessionUser }
+interface Challenge { twoFactorRequired: true; challengeToken: string }
+type LoginResult = AuthTokens | Challenge;
 const ADMIN_ROLES = ['moderator', 'finance_admin', 'support', 'super_admin'];
 const base = { httpOnly: true, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production', path: '/' };
 
 export async function POST(req: Request): Promise<NextResponse> {
-  const creds = (await req.json()) as { identifier: string; password: string };
-  const { status, body } = await apiSend<AuthTokens>('POST', '/auth/login', creds);
+  const input = (await req.json()) as { identifier?: string; password?: string; challengeToken?: string; token?: string };
+
+  // Step 1 = password login; step 2 = submit the 2FA code with the challenge token.
+  const { status, body } = input.challengeToken
+    ? await apiSend<LoginResult>('POST', '/auth/2fa/verify', { challengeToken: input.challengeToken, token: input.token })
+    : await apiSend<LoginResult>('POST', '/auth/login', { identifier: input.identifier, password: input.password });
   if (!body.success) return NextResponse.json(body, { status });
-  if (!body.data.user.roles.some((r) => ADMIN_ROLES.includes(r))) {
+
+  // Login answered with a 2FA challenge — relay it to the client, set no cookies.
+  if ('twoFactorRequired' in body.data) {
+    return NextResponse.json({ success: true, data: { twoFactorRequired: true, challengeToken: body.data.challengeToken }, error: null });
+  }
+
+  const tokens = body.data;
+  if (!tokens.user.roles.some((r) => ADMIN_ROLES.includes(r))) {
     return NextResponse.json(
       { success: false, data: null, error: { code: 'FORBIDDEN', message: 'This portal is for staff accounts only' } },
       { status: 403 },
     );
   }
-  const res = NextResponse.json({ success: true, data: { user: body.data.user }, error: null });
-  res.cookies.set(AT_COOKIE, body.data.accessToken, { ...base, maxAge: body.data.expiresIn });
-  res.cookies.set(RT_COOKIE, body.data.refreshToken, { ...base, maxAge: 30 * 24 * 3600 });
-  res.cookies.set('gum_admin', JSON.stringify({ name: body.data.user.fullName, roles: body.data.user.roles }), { ...base, httpOnly: false, maxAge: 30 * 24 * 3600 });
+  const res = NextResponse.json({ success: true, data: { user: tokens.user }, error: null });
+  res.cookies.set(AT_COOKIE, tokens.accessToken, { ...base, maxAge: tokens.expiresIn });
+  res.cookies.set(RT_COOKIE, tokens.refreshToken, { ...base, maxAge: 30 * 24 * 3600 });
+  res.cookies.set('gum_admin', JSON.stringify({ name: tokens.user.fullName, roles: tokens.user.roles }), { ...base, httpOnly: false, maxAge: 30 * 24 * 3600 });
   return res;
 }
 
