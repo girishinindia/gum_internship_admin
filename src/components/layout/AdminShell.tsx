@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
   { href: '/finance/orders', label: 'Orders', icon: '₹', roles: ['finance_admin'] },
   { href: '/finance/refunds', label: 'Refunds', icon: '↩', roles: ['finance_admin'] },
   { href: '/finance/settlements', label: 'Settlements', icon: '⇄', roles: ['finance_admin'] },
+  { href: '/coupons', label: 'Coupons', icon: '✁', roles: ['finance_admin', 'moderator'] },
   { href: '/tickets', label: 'Support tickets', icon: '✉', roles: ['support', 'moderator', 'finance_admin'] },
   { href: '/cms', label: 'CMS', icon: '▤', roles: ['moderator'] },
   { href: '/audit', label: 'Audit log', icon: '☰', roles: ['moderator'] },

@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 /** Everything except /login requires a staff session cookie. */
 export function middleware(req: NextRequest): NextResponse {
-  const hasSession = req.cookies.has('gum_rt');
+  const hasSession = req.cookies.has('gum_admin_rt');
   const { pathname } = req.nextUrl;
   if (pathname === '/login') {
     return hasSession ? NextResponse.redirect(new URL('/dashboard', req.url)) : NextResponse.next();

@@ -128,14 +128,15 @@ function AddLesson({ sectionId, busy, call, done }: {
           {LESSON_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
         <input className="input" type="number" min={0} placeholder="Duration (min)" value={duration} onChange={(e) => setDuration(e.target.value)} />
-        {refLabel && <input className="input" placeholder={refLabel} value={ref} onChange={(e) => setRef(e.target.value)} />}
+        {refLabel && <input className="input" placeholder={`${refLabel} (required)`} value={ref} onChange={(e) => setRef(e.target.value)} />}
       </div>
       <div className="flex flex-wrap items-center gap-4 text-body-sm text-neutral-600">
         <label className="flex items-center gap-1.5"><input type="checkbox" checked={isPreview} onChange={(e) => setPreview(e.target.checked)} /> Free preview</label>
         <label className="flex items-center gap-1.5"><input type="checkbox" checked={isMandatory} onChange={(e) => setMandatory(e.target.checked)} /> Mandatory</label>
+        {refLabel && !ref.trim() && <span className="text-caption text-danger-600">{refLabel} is required for a {type} lesson</span>}
         <span className="ml-auto flex gap-2">
           <button onClick={done} className="btn-outline !h-8 px-3 text-body-sm">Cancel</button>
-          <button onClick={add} disabled={busy || title.trim().length < 2} className="btn-primary !h-8 px-3 text-body-sm">Add</button>
+          <button onClick={add} disabled={busy || title.trim().length < 2 || (refLabel !== '' && !ref.trim())} className="btn-primary !h-8 px-3 text-body-sm">Add</button>
         </span>
       </div>
     </div>

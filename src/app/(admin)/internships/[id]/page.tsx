@@ -82,7 +82,14 @@ export default function EditInternshipPage(): JSX.Element {
 
       {tab === 'Details' && <InternshipForm key={data.updatedAt} mode="edit" initial={data} submitLabel="Save changes" onSubmit={save} />}
       {tab === 'Curriculum' && <CurriculumEditor internshipId={iid} sections={data.sections ?? []} reload={load} />}
-      {tab === 'Batches' && <BatchEditor internshipId={iid} batches={data.batches ?? []} reload={load} />}
+      {tab === 'Batches' && (
+        data.paceType === 'batch'
+          ? <BatchEditor internshipId={iid} batches={data.batches ?? []} reload={load} />
+          : <div className="card p-5 text-body-sm text-neutral-600">
+              This internship is <strong>self-paced</strong>, so it has no cohorts or seat limits — learners enrol any time and there's no waitlist.
+              To run fixed cohorts with seats, change the pace to <strong>batch</strong> on the <button className="text-primary-700 underline" onClick={() => setTab('Details')}>Details</button> tab.
+            </div>
+      )}
       {tab === 'Publish' && <PublishPanel data={data} onAction={setStatus} />}
     </div>
   );

@@ -4,8 +4,11 @@ import type { Envelope } from './types';
 import { ApiError } from './types';
 
 const API = process.env.API_URL ?? 'http://localhost:4000';
-export const AT_COOKIE = 'gum_at';
-export const RT_COOKIE = 'gum_rt';
+// Distinct from the web app's gum_at/gum_rt: cookies ignore port, so on a shared
+// host (localhost, or apex domain) the two apps would otherwise clobber each
+// other's tokens and trip refresh-token reuse-detection. Keep admin names separate.
+export const AT_COOKIE = 'gum_admin_at';
+export const RT_COOKIE = 'gum_admin_rt';
 
 /**
  * Server-side API access (RSC pages, route handlers).
