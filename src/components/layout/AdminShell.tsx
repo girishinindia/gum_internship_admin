@@ -18,6 +18,7 @@ interface NavItem {
 /** RBAC-aware navigation: items are filtered by the admin's roles. */
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: '▦', roles: ['moderator', 'finance_admin', 'support'] },
+  { href: '/analytics', label: 'Analytics', icon: '◷', roles: ['moderator', 'finance_admin', 'support'] },
   { href: '/moderation/kyc', label: 'Instructor KYC', icon: '☑', roles: ['moderator'] },
   { href: '/internships', label: 'Internships', icon: '◫', roles: ['moderator'] },
   { href: '/users', label: 'Users', icon: '⚇', roles: ['moderator', 'support'] },
