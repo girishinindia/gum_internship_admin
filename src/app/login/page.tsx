@@ -52,6 +52,9 @@ function AdminLoginForm(): JSX.Element {
           <input className="input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           {error && <p className="rounded-md bg-danger-50 px-3 py-2 text-body-sm text-danger-700">{error}</p>}
           <button className="btn-primary w-full" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+          <p className="text-center text-body-sm text-neutral-500">
+            <a href="/forgot-password" className="font-medium text-primary-600 hover:underline">Forgot password?</a>
+          </p>
         </form>
       ) : (
         <form className="card w-full max-w-sm space-y-4 p-6" onSubmit={submitCode}>

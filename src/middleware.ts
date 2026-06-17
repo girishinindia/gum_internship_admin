@@ -42,8 +42,10 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
   const loggedIn = req.cookies.has(RT);
 
-  if (pathname === '/login') {
-    return loggedIn ? NextResponse.redirect(new URL('/dashboard', req.url)) : NextResponse.next();
+  // Public (no session needed): login + the password-reset flow.
+  if (pathname === '/login' || pathname === '/forgot-password') {
+    if (pathname === '/login' && loggedIn) return NextResponse.redirect(new URL('/dashboard', req.url));
+    return NextResponse.next();
   }
   if (!loggedIn) {
     const login = new URL('/login', req.url);
