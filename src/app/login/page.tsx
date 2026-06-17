@@ -13,6 +13,7 @@ function AdminLoginForm(): JSX.Element {
   const next = useSearchParams().get('next') ?? '/dashboard';
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +50,13 @@ function AdminLoginForm(): JSX.Element {
             <p className="text-body-sm text-neutral-600">Staff accounts only. All actions are audited.</p>
           </div>
           <input className="input" placeholder="Email or phone" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
-          <input className="input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <div className="relative">
+            <input className="input pr-16" type={showPw ? 'text' : 'password'} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <button type="button" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Hide password' : 'Show password'}
+              className="absolute inset-y-0 right-0 px-3 text-body-sm font-medium text-primary-600">
+              {showPw ? 'Hide' : 'Show'}
+            </button>
+          </div>
           {error && <p className="rounded-md bg-danger-50 px-3 py-2 text-body-sm text-danger-700">{error}</p>}
           <button className="btn-primary w-full" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
           <p className="text-center text-body-sm text-neutral-500">

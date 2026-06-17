@@ -19,6 +19,26 @@ export function BatchEditor({ internshipId, batches, reload }: {
   const [endDate, setEnd] = useState('');
   const [seatsTotal, setSeats] = useState('30');
 
+  const SeatCell = ({ b, busy: cellBusy, onSave }: { b: Any; busy: boolean; onSave: (n: number) => void }): JSX.Element => {
+    const filled = Number(b.seatsFilled ?? b.seatsTotal - b.seatsLeft);
+    const [val, setVal] = useState(String(b.seatsTotal));
+    const commit = (): void => {
+      const n = Number(val);
+      if (!Number.isInteger(n) || n === Number(b.seatsTotal)) { setVal(String(b.seatsTotal)); return; }
+      if (n < Math.max(1, filled)) { toast('warning', `Seats can’t go below ${filled} already filled.`); setVal(String(b.seatsTotal)); return; }
+      onSave(n);
+    };
+    return (
+      <div className="flex items-center gap-2">
+        <input type="number" min={Math.max(1, filled)} value={val} disabled={cellBusy}
+          onChange={(e) => setVal(e.target.value)} onBlur={commit}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          className="input !h-8 !w-20 !py-0" aria-label="Total seats" />
+        <span className="whitespace-nowrap text-caption text-neutral-400">{filled} filled</span>
+      </div>
+    );
+  };
+
   const call = async (method: string, path: string, body?: unknown, ok?: string): Promise<void> => {
     setBusy(true);
     try {
@@ -56,7 +76,9 @@ export function BatchEditor({ internshipId, batches, reload }: {
               <tr key={b.id} className="border-t border-neutral-100">
                 <td className="px-4 py-2.5 font-medium">{b.name}</td>
                 <td className="px-4 py-2.5">{b.startDate} → {b.endDate}</td>
-                <td className="px-4 py-2.5">{b.seatsTotal - b.seatsLeft}/{b.seatsTotal}</td>
+                <td className="px-4 py-2.5">
+                  <SeatCell b={b} busy={busy} onSave={(seatsTotal) => call('PATCH', `/batches/${b.id}`, { seatsTotal }, 'Seats updated')} />
+                </td>
                 <td className="px-4 py-2.5">
                   <select className="input !h-8 !py-0" value={b.status} disabled={busy}
                     onChange={(e) => call('PATCH', `/batches/${b.id}`, { status: e.target.value }, 'Batch updated')}>

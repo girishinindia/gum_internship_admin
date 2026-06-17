@@ -22,6 +22,7 @@ export default function CouponsPage(): JSX.Element {
   const [status, setStatus] = useState('');
   const [rows, setRows] = useState<Any[] | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<number | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
     setRows(null);
@@ -65,21 +66,31 @@ export default function CouponsPage(): JSX.Element {
           <tbody>
             {!rows ? <tr><td colSpan={7} className="px-4 py-8 text-center text-neutral-500">Loading…</td></tr>
             : rows.length === 0 ? <tr><td colSpan={7} className="px-4 py-8 text-center text-neutral-500">No coupons.</td></tr>
-            : rows.map((c) => (
+            : rows.flatMap((c) => [
               <tr key={c.id} className="border-t border-neutral-100">
                 <td className="px-4 py-2.5 font-mono font-medium">{c.code}</td>
                 <td className="px-4 py-2.5">{c.discountType === 'percent' ? `${c.discountValue}%` : inr(c.discountValue)}{c.maxDiscountAmount ? ` (max ${inr(c.maxDiscountAmount)})` : ''}</td>
                 <td className="px-4 py-2.5">{c.internshipTitle ?? 'All internships'}</td>
                 <td className="px-4 py-2.5">{fmt(c.validUntil)}</td>
-                <td className="px-4 py-2.5">{c.redemptionCount}{c.maxRedemptions ? `/${c.maxRedemptions}` : ''}</td>
+                <td className="px-4 py-2.5">{c.redemptionCount}{c.maxRedemptions ? `/${c.maxRedemptions}` : ''} · {c.perUserLimit}/user</td>
                 <td className="px-4 py-2.5"><span className={`badge capitalize ${TONE[c.status] ?? 'bg-neutral-100'}`}>{String(c.status).replace('_', ' ')}</span></td>
                 <td className="px-4 py-2.5 text-right">
-                  {c.isActive
-                    ? <button onClick={() => patch(c.id, { isActive: false }, 'Coupon deactivated')} className="btn-outline !h-8 px-3 text-body-sm !text-danger-700">Expire</button>
-                    : <button onClick={() => patch(c.id, { isActive: true }, 'Coupon activated')} className="btn-outline !h-8 px-3 text-body-sm">Activate</button>}
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setEditing((id) => (id === c.id ? null : c.id))} className="btn-outline !h-8 px-3 text-body-sm">{editing === c.id ? 'Close' : 'Edit'}</button>
+                    {c.isActive
+                      ? <button onClick={() => patch(c.id, { isActive: false }, 'Coupon deactivated')} className="btn-outline !h-8 px-3 text-body-sm !text-danger-700">Expire</button>
+                      : <button onClick={() => patch(c.id, { isActive: true }, 'Coupon activated')} className="btn-outline !h-8 px-3 text-body-sm">Activate</button>}
+                  </div>
                 </td>
-              </tr>
-            ))}
+              </tr>,
+              editing === c.id && (
+                <tr key={`${c.id}-edit`} className="border-t border-neutral-100 bg-neutral-50/60">
+                  <td colSpan={7} className="px-4 py-4">
+                    <EditCoupon c={c} onSave={(body) => patch(c.id, body, 'Coupon updated').then(() => setEditing(null))} />
+                  </td>
+                </tr>
+              ),
+            ])}
           </tbody>
         </table>
       </div>
@@ -89,7 +100,7 @@ export default function CouponsPage(): JSX.Element {
 
 function CreateCoupon({ onDone }: { onDone: () => void }): JSX.Element {
   const toast = useToast();
-  const [f, setF] = useState({ code: '', discountType: 'percent', discountValue: '', maxDiscountAmount: '', validUntil: '', maxRedemptions: '', minOrderAmount: '0' });
+  const [f, setF] = useState({ code: '', discountType: 'percent', discountValue: '', maxDiscountAmount: '', validUntil: '', maxRedemptions: '', perUserLimit: '1', minOrderAmount: '0' });
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f, v: string): void => setF((p) => ({ ...p, [k]: v }));
 
@@ -102,6 +113,7 @@ function CreateCoupon({ onDone }: { onDone: () => void }): JSX.Element {
         ...(f.maxDiscountAmount ? { maxDiscountAmount: Number(f.maxDiscountAmount) } : {}),
         ...(f.validUntil ? { validUntil: new Date(`${f.validUntil}T23:59:59Z`).toISOString() } : {}),
         ...(f.maxRedemptions ? { maxRedemptions: Number(f.maxRedemptions) } : {}),
+        perUserLimit: Number(f.perUserLimit) || 1,
         minOrderAmount: Number(f.minOrderAmount) || 0,
       }) });
       toast('success', 'Coupon created.'); onDone();
@@ -123,9 +135,56 @@ function CreateCoupon({ onDone }: { onDone: () => void }): JSX.Element {
         <input className="input" type="date" value={f.validUntil} onChange={(e) => set('validUntil', e.target.value)} /></label>
       <label className="block"><span className="mb-1 block text-caption font-medium text-neutral-700">Max redemptions</span>
         <input className="input" type="number" min={1} value={f.maxRedemptions} onChange={(e) => set('maxRedemptions', e.target.value)} placeholder="optional" /></label>
+      <label className="block"><span className="mb-1 block text-caption font-medium text-neutral-700">Per-user limit</span>
+        <input className="input" type="number" min={1} value={f.perUserLimit} onChange={(e) => set('perUserLimit', e.target.value)} /></label>
       <label className="block"><span className="mb-1 block text-caption font-medium text-neutral-700">Min order (₹)</span>
         <input className="input" type="number" min={0} value={f.minOrderAmount} onChange={(e) => set('minOrderAmount', e.target.value)} /></label>
       <button onClick={submit} disabled={busy} className="btn-primary px-4">{busy ? '…' : 'Create coupon'}</button>
+    </div>
+  );
+}
+
+/** Inline edit for an existing coupon. Code/discount are immutable; everything
+ *  else (validity, caps, per-user limit, min order, active) is patchable. */
+function EditCoupon({ c, onSave }: { c: Any; onSave: (body: Any) => void }): JSX.Element {
+  const toDateInput = (s: string | null): string => (s ? new Date(s).toISOString().slice(0, 10) : '');
+  const [f, setF] = useState({
+    description: c.description ?? '',
+    validUntil: toDateInput(c.validUntil),
+    maxRedemptions: c.maxRedemptions != null ? String(c.maxRedemptions) : '',
+    perUserLimit: String(c.perUserLimit ?? 1),
+    minOrderAmount: String(c.minOrderAmount ?? 0),
+    isActive: Boolean(c.isActive),
+  });
+  const set = (k: keyof typeof f, v: string | boolean): void => setF((p) => ({ ...p, [k]: v }));
+
+  const save = (): void => {
+    onSave({
+      description: f.description,
+      validUntil: f.validUntil ? new Date(`${f.validUntil}T23:59:59Z`).toISOString() : null,
+      maxRedemptions: f.maxRedemptions ? Number(f.maxRedemptions) : null,
+      perUserLimit: Number(f.perUserLimit) || 1,
+      minOrderAmount: Number(f.minOrderAmount) || 0,
+      isActive: f.isActive,
+    });
+  };
+
+  return (
+    <div className="grid items-end gap-3 sm:grid-cols-5">
+      <label className="block sm:col-span-2"><span className="mb-1 block text-caption font-medium text-neutral-700">Description</span>
+        <input className="input" value={f.description} onChange={(e) => set('description', e.target.value)} placeholder="Internal note" /></label>
+      <label className="block"><span className="mb-1 block text-caption font-medium text-neutral-700">Valid until</span>
+        <input className="input" type="date" value={f.validUntil} onChange={(e) => set('validUntil', e.target.value)} /></label>
+      <label className="block"><span className="mb-1 block text-caption font-medium text-neutral-700">Max redemptions</span>
+        <input className="input" type="number" min={1} value={f.maxRedemptions} onChange={(e) => set('maxRedemptions', e.target.value)} placeholder="∞" /></label>
+      <label className="block"><span className="mb-1 block text-caption font-medium text-neutral-700">Per-user limit</span>
+        <input className="input" type="number" min={1} value={f.perUserLimit} onChange={(e) => set('perUserLimit', e.target.value)} /></label>
+      <label className="block"><span className="mb-1 block text-caption font-medium text-neutral-700">Min order (₹)</span>
+        <input className="input" type="number" min={0} value={f.minOrderAmount} onChange={(e) => set('minOrderAmount', e.target.value)} /></label>
+      <label className="flex items-center gap-2 text-body-sm">
+        <input type="checkbox" checked={f.isActive} onChange={(e) => set('isActive', e.target.checked)} /> Active
+      </label>
+      <button onClick={save} className="btn-primary px-4">Save changes</button>
     </div>
   );
 }

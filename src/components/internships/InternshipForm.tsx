@@ -13,6 +13,7 @@ export interface InternshipFormValues {
   description?: string;
   outcomes: string[];
   prerequisites: string[];
+  faqs?: { question: string; answer: string }[];
   languages: string[];
   providerType: string;
   pricingType: string;
@@ -58,6 +59,9 @@ export function InternshipForm({ initial, mode, submitLabel, onSubmit }: {
   const [description, setDescription] = useState<string>(initial?.description ?? '');
   const [outcomes, setOutcomes] = useState<string>((initial?.outcomes ?? []).join('\n'));
   const [prerequisites, setPrereq] = useState<string>((initial?.prerequisites ?? []).join('\n'));
+  const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>(
+    Array.isArray(initial?.faqs) ? (initial.faqs as { question: string; answer: string }[]) : [],
+  );
   const [languages, setLanguages] = useState<string>((initial?.languages ?? ['english']).join(', '));
   const [providerType, setProvider] = useState<string>(initial?.providerType ?? 'system');
   const [pricingType, setPricing] = useState<string>(initial?.pricingType ?? 'free');
@@ -88,6 +92,7 @@ export function InternshipForm({ initial, mode, submitLabel, onSubmit }: {
       description: description.trim() || undefined,
       outcomes: lines(outcomes),
       prerequisites: lines(prerequisites),
+      faqs: faqs.map((f) => ({ question: f.question.trim(), answer: f.answer.trim() })).filter((f) => f.question && f.answer),
       languages: csv(languages).length ? csv(languages) : ['english'],
       providerType,
       pricingType,
@@ -150,6 +155,23 @@ export function InternshipForm({ initial, mode, submitLabel, onSubmit }: {
           <Label>Prerequisites (one per line)</Label>
           <textarea className="input min-h-[100px] py-2" value={prerequisites} onChange={(e) => setPrereq(e.target.value)} placeholder={'Basic JavaScript'} />
         </div>
+      </div>
+
+      <div className="card space-y-3 p-5">
+        <div className="flex items-center justify-between">
+          <Label>FAQs (shown on the internship page)</Label>
+          <button type="button" onClick={() => setFaqs((p) => [...p, { question: '', answer: '' }])} className="btn-outline !h-8 px-3 text-body-sm">+ Add FAQ</button>
+        </div>
+        {faqs.length === 0 && <p className="text-body-sm text-neutral-500">No FAQs yet. Add common questions (fees, certificate, schedule) to reduce student doubts.</p>}
+        {faqs.map((f, idx) => (
+          <div key={idx} className="rounded-xl border border-neutral-200 p-3">
+            <div className="flex items-center gap-2">
+              <input className="input flex-1" value={f.question} placeholder="Question" onChange={(e) => setFaqs((p) => p.map((x, i) => (i === idx ? { ...x, question: e.target.value } : x)))} />
+              <button type="button" onClick={() => setFaqs((p) => p.filter((_, i) => i !== idx))} className="px-2 text-danger-600" aria-label="Remove FAQ">✕</button>
+            </div>
+            <textarea className="input mt-2 min-h-[64px] py-2" value={f.answer} placeholder="Answer" onChange={(e) => setFaqs((p) => p.map((x, i) => (i === idx ? { ...x, answer: e.target.value } : x)))} />
+          </div>
+        ))}
       </div>
 
       <div className="card grid gap-4 p-5 sm:grid-cols-3">

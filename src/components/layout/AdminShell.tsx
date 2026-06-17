@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: '▦', roles: ['moderator', 'finance_admin', 'support'] },
   { href: '/analytics', label: 'Analytics', icon: '◷', roles: ['moderator', 'finance_admin', 'support'] },
   { href: '/moderation/kyc', label: 'Instructor KYC', icon: '☑', roles: ['moderator'] },
+  { href: '/instructors', label: 'Instructors', icon: '✦', roles: ['moderator', 'finance_admin'] },
   { href: '/internships', label: 'Internships', icon: '◫', roles: ['moderator'] },
   { href: '/users', label: 'Users', icon: '⚇', roles: ['moderator', 'support'] },
   { href: '/enrollments', label: 'Enrollment ops', icon: '↹', roles: ['moderator', 'support'] },
