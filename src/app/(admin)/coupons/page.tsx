@@ -72,7 +72,10 @@ export default function CouponsPage(): JSX.Element {
                 <td className="px-4 py-2.5">{c.discountType === 'percent' ? `${c.discountValue}%` : inr(c.discountValue)}{c.maxDiscountAmount ? ` (max ${inr(c.maxDiscountAmount)})` : ''}</td>
                 <td className="px-4 py-2.5">{c.internshipTitle ?? 'All internships'}</td>
                 <td className="px-4 py-2.5">{fmt(c.validUntil)}</td>
-                <td className="px-4 py-2.5">{c.redemptionCount}{c.maxRedemptions ? `/${c.maxRedemptions}` : ''} · {c.perUserLimit}/user</td>
+                <td className="px-4 py-2.5">
+                  <div>{c.redemptionCount}{c.maxRedemptions ? ` / ${c.maxRedemptions}` : ' used'}</div>
+                  <div className="text-caption text-neutral-400">max {c.perUserLimit}/user</div>
+                </td>
                 <td className="px-4 py-2.5"><span className={`badge capitalize ${TONE[c.status] ?? 'bg-neutral-100'}`}>{String(c.status).replace('_', ' ')}</span></td>
                 <td className="px-4 py-2.5 text-right">
                   <div className="flex justify-end gap-2">
